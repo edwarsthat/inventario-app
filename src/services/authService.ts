@@ -48,6 +48,20 @@ export const authService = {
                     });
                     reject(err);
                 },
+                newPasswordRequired: (userAttributes, requiredAttributes) => {
+                    console.log('🔒 SE REQUIERE CAMBIO DE CONTRASEÑA');
+                    console.log('📋 Atributos del usuario:', userAttributes);
+                    console.log('📋 Atributos requeridos:', requiredAttributes);
+
+                    // Rechazar con información especial para manejar el cambio de contraseña
+                    reject({
+                        code: 'NewPasswordRequired',
+                        message: 'Debes cambiar tu contraseña temporal',
+                        cognitoUser: cognitoUser,
+                        userAttributes: userAttributes,
+                        requiredAttributes: requiredAttributes,
+                    });
+                },
             });
         });
     },
@@ -104,6 +118,28 @@ export const authService = {
                 console.log('✅ CONFIRMACIÓN EXITOSA - Respuesta del servidor:', JSON.stringify(result, null, 2));
                 console.log('📋 Usuario confirmado exitosamente');
                 resolve(result);
+            });
+        });
+    },
+    // COMPLETAR CAMBIO DE CONTRASEÑA OBLIGATORIO
+    completeNewPasswordChallenge: (cognitoUser: CognitoUser, newPassword: string, userAttributes?: any): Promise<any> => {
+        return new Promise((resolve, reject) => {
+            // Eliminar atributos que no se pueden modificar
+            delete userAttributes.email_verified;
+            delete userAttributes.phone_number_verified;
+
+            cognitoUser.completeNewPasswordChallenge(newPassword, userAttributes, {
+                onSuccess: async (result) => {
+                    console.log('✅ CONTRASEÑA CAMBIADA EXITOSAMENTE');
+                    const token = result.getIdToken().getJwtToken();
+                    const username = cognitoUser.getUsername();
+                    await Keychain.setGenericPassword(username, token);
+                    resolve(result);
+                },
+                onFailure: (err) => {
+                    console.log('❌ ERROR AL CAMBIAR CONTRASEÑA:', err);
+                    reject(err);
+                },
             });
         });
     },

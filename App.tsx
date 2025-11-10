@@ -3,12 +3,13 @@
  * @format
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import {
   SafeAreaProvider,
 } from 'react-native-safe-area-context';
 import Loading from './src/components/common/Loading';
+import NavBar from './src/components/common/NavBar';
 import { useUiStore } from './src/store/uiStore';
 import { useAuthStore } from './src/store/authStore';
 import { useRouteStore } from './src/store/routeStore';
@@ -20,8 +21,10 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
   const { setLoading } = useUiStore();
   const { checkAuth, isAuthenticated } = useAuthStore();
-  const { pushRoute } = useRouteStore();
-  const [ pageState, setPageState ] = useState<string>("");
+  const { pushRoute, stack } = useRouteStore();
+
+  const currentRoute = stack[stack.length - 1] || 'Auth/Login';
+  const showNavBar = isAuthenticated && !currentRoute.startsWith('Auth/');
 
   useEffect(() => {
     const initialCheck = async () => {
@@ -31,10 +34,8 @@ function App() {
         console.log('✅ [App] checkAuth completed. isAuthenticated:', isAuthenticated);
         if (isAuthenticated) {
           pushRoute('Home');
-          setPageState('Home');
         } else {
-          pushRoute('Login');
-          setPageState('Login');
+          pushRoute('Auth/Login');
         }
       } catch (error) {
         console.error('Error during initial check:', error);
@@ -46,13 +47,23 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      pushRoute('Home');
+    } else {
+      pushRoute('Auth/Login');
+    }
+  }, [isAuthenticated, pushRoute]);
+
+
 
 
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <Loading />
-      <AppRouter pageState={pageState} />
+      {showNavBar && <NavBar />}
+      <AppRouter pageState={stack[stack.length - 1] || 'Auth/Login'} />
     </SafeAreaProvider>
   );
 }

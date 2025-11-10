@@ -5,32 +5,57 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    Alert,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { useUiStore } from '../../store/uiStore';
-// import { useAuthStore } from '../../store/authStore';
+import { useUiStore } from '../../../store/uiStore';
+import { useAuthStore } from '../../../store/authStore';
+import { useRouteStore } from '../../../store/routeStore';
 
 const LoginScreen: React.FC = ({ }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const { loading } = useUiStore();
-
-    // const { login } = useAuthStore();
+    const [usernameError, setUsernameError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const { loading, setLoading } = useUiStore();
+    const { login } = useAuthStore();
+    const pushRoute = useRouteStore(state => state.pushRoute);
 
     const handleLogin = async () => {
-        if (!username.trim() || !password.trim()) {
-            Alert.alert('Error', 'Por favor ingresa usuario y contraseña');
-            return;
-        }
-        console.log('Attempting login with:', { username, password });
         try {
-            // await login(username, password);
-            Alert.alert('Éxito', 'Sesión iniciada correctamente');
+            setLoading(true);
+            // Resetear errores
+            setUsernameError('');
+            setPasswordError('');
+
+            // Validar campos
+            let hasError = false;
+            if (!username.trim()) {
+                setUsernameError('Por favor ingresa tu usuario');
+                hasError = true;
+            }
+            if (!password.trim()) {
+                setPasswordError('Por favor ingresa tu contraseña');
+                hasError = true;
+            }
+
+            if (hasError) {
+                return;
+            }
+
+            console.log('Attempting login with:', { username, password });
+            await login(username, password);
             // La navegación se manejará automáticamente por el estado
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Error al iniciar sesión');
+            // Verificar si requiere cambio de contraseña
+            if (error.code === 'NewPasswordRequired') {
+                console.log('🔒 Redirigiendo a cambio de contraseña...');
+                pushRoute('Auth/ResetPassword');
+                return;
+            }
+            setPasswordError(error.message || 'Error al iniciar sesión');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -49,28 +74,40 @@ const LoginScreen: React.FC = ({ }) => {
                     <View style={styles.inputContainer}>
                         <Text style={styles.label}>Usuario</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, usernameError && styles.inputError]}
                             value={username}
-                            onChangeText={setUsername}
+                            onChangeText={(text) => {
+                                setUsername(text);
+                                if (usernameError) setUsernameError('');
+                            }}
                             placeholder="Ingresa tu usuario"
                             placeholderTextColor="#999"
                             autoCapitalize="none"
                             autoCorrect={false}
                         />
+                        {usernameError ? (
+                            <Text style={styles.errorText}>{usernameError}</Text>
+                        ) : null}
                     </View>
 
                     <View style={styles.inputContainer}>
                         <Text style={styles.label}>Contraseña</Text>
                         <TextInput
-                            style={styles.input}
+                            style={[styles.input, passwordError && styles.inputError]}
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                if (passwordError) setPasswordError('');
+                            }}
                             placeholder="Ingresa tu contraseña"
                             placeholderTextColor="#999"
                             secureTextEntry
                             autoCapitalize="none"
                             autoCorrect={false}
                         />
+                        {passwordError ? (
+                            <Text style={styles.errorText}>{passwordError}</Text>
+                        ) : null}
                     </View>
 
                     <TouchableOpacity
@@ -150,6 +187,16 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 3,
         elevation: 2,
+    },
+    inputError: {
+        borderColor: '#e74c3c',
+        borderWidth: 1.5,
+    },
+    errorText: {
+        color: '#e74c3c',
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
     },
     loginButton: {
         backgroundColor: '#3498db',
