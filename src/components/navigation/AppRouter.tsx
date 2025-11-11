@@ -13,6 +13,9 @@ export default function AppRouter({ pageState }: propsType) {
         case 'Home':
             const HomeScreen = require('../screens/Home').default;
             return <HomeScreen />;
+        case 'Scanner':
+            const ScannerScreen = require('../screens/scanner/ScannerScreen').default;
+            return <ScannerScreen />;
         default:
             const NotFoundScreen = require('../screens/NotFoundScreen').default;
             return <NotFoundScreen />;

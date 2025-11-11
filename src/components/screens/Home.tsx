@@ -1,10 +1,12 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { Text, View, Button } from "react-native";
 import { useAuthStore } from "../../store/authStore";
+import { useRouteStore } from "../../store/routeStore";
 
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
+  const { pushRoute } = useRouteStore();
   return (
     <View>
       <Text>Home Screen</Text>
@@ -13,6 +15,7 @@ export default function HomeScreen() {
           <Text>Bienvenido admin</Text>
         </View>
       )}
+      <Button title="Cámara" onPress={() => pushRoute("Scanner")} />
     </View>
   );
 }
