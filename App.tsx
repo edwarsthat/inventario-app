@@ -20,7 +20,7 @@ function App() {
 
   const isDarkMode = useColorScheme() === 'dark';
   const { setLoading } = useUiStore();
-  const { checkAuth, isAuthenticated } = useAuthStore();
+  const { isAuthenticated, checkAuth } = useAuthStore();
   const { pushRoute, stack } = useRouteStore();
 
   const currentRoute = stack[stack.length - 1] || 'Auth/Login';

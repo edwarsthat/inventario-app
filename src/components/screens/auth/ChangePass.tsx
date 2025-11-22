@@ -10,11 +10,9 @@ import {
     ScrollView,
     Alert,
 } from 'react-native';
-import { useAuthStore } from '../../../store/authStore';
 import { useRouteStore } from '../../../store/routeStore';
 
 export default function ChangePass() {
-    const { completePasswordChange } = useAuthStore();
     const { pushRoute, clearStack } = useRouteStore();
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -57,7 +55,6 @@ export default function ChangePass() {
 
         console.log('Cambiando contraseña...');
         try {
-            await completePasswordChange(newPassword);
             Alert.alert('Éxito', 'Contraseña cambiada correctamente');
             // Navegar a Home después del cambio exitoso
             clearStack();

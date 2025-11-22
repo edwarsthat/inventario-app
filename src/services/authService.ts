@@ -1,166 +1,85 @@
-import {
-    CognitoUserPool,
-    CognitoUser,
-    AuthenticationDetails,
-    CognitoUserAttribute,
-} from 'amazon-cognito-identity-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { awsConfig } from '../config/awsConfig';
-import * as Keychain from 'react-native-keychain';
 
-const userPool = new CognitoUserPool({
-    UserPoolId: awsConfig.userPoolId,
-    ClientId: awsConfig.userPoolWebClientId,
-});
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
+import { API_BASE_URL, API_ENDPOINTS } from '../config/apiConfig';
+
+
 
 export const authService = {
-    // LOGIN
-    signIn: (username: string, password: string): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const authenticationDetails = new AuthenticationDetails({
-                Username: username,
-                Password: password,
-            });
-
-            const cognitoUser = new CognitoUser({
-                Username: username,
-                Pool: userPool,
-            });
-
-            cognitoUser.authenticateUser(authenticationDetails, {
-                onSuccess: async (result) => {
-                    console.log('🎉 LOGIN EXITOSO - Respuesta completa del servidor:', JSON.stringify(result, null, 2));
-                    console.log('📋 Detalles del token:', {
-                        accessToken: result.getAccessToken().getJwtToken(),
-                        idToken: result.getIdToken().getJwtToken(),
-                        refreshToken: result.getRefreshToken().getToken(),
-                    });
-                    const token = result.getIdToken().getJwtToken();
-                    await Keychain.setGenericPassword(username, token);
-                    resolve(result);
+    login: async (username: string, password: string) => {
+        try {
+            const url = `${API_BASE_URL}${API_ENDPOINTS.LOGIN}`;
+            console.log('🌐 =====================');
+            console.log('🌐 [AuthService] URL completa:', url);
+            console.log('🌐 [AuthService] API_BASE_URL:', API_BASE_URL);
+            console.log('🌐 [AuthService] API_ENDPOINTS.LOGIN:', API_ENDPOINTS.LOGIN);
+            console.log('📤 [AuthService] Usuario:', username);
+            console.log('🌐 =====================');
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                console.log('⏱️ [AuthService] TIMEOUT - La petición tardó más de 10 segundos');
+                controller.abort();
+            }, 10000);
+            
+            console.log('📡 [AuthService] Enviando petición...');
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-                onFailure: (err) => {
-                    console.log('❌ ERROR EN LOGIN - Respuesta del servidor:', JSON.stringify(err, null, 2));
-                    console.log('📝 Detalles del error:', {
-                        code: err.code,
-                        name: err.name,
-                        message: err.message,
-                    });
-                    reject(err);
-                },
-                newPasswordRequired: (userAttributes, requiredAttributes) => {
-                    console.log('🔒 SE REQUIERE CAMBIO DE CONTRASEÑA');
-                    console.log('📋 Atributos del usuario:', userAttributes);
-                    console.log('📋 Atributos requeridos:', requiredAttributes);
-
-                    // Rechazar con información especial para manejar el cambio de contraseña
-                    reject({
-                        code: 'NewPasswordRequired',
-                        message: 'Debes cambiar tu contraseña temporal',
-                        cognitoUser: cognitoUser,
-                        userAttributes: userAttributes,
-                        requiredAttributes: requiredAttributes,
-                    });
-                },
-            });
-        });
-    },
-    // REGISTRO
-    signUp: (username: string, password: string, email: string): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const attributeList = [
-                new CognitoUserAttribute({
-                    Name: 'email',
-                    Value: email,
-                }),
-            ];
-
-            userPool.signUp(username, password, attributeList, [], (err, result) => {
-                if (err) {
-                    console.log('❌ ERROR EN REGISTRO - Respuesta del servidor:', JSON.stringify(err, null, 2));
-                    console.log('📝 Detalles del error de registro:', {
-                        code: (err as any).code,
-                        name: err.name,
-                        message: err.message,
-                    });
-                    reject(err);
-                    return;
-                }
-                console.log('✅ REGISTRO EXITOSO - Respuesta del servidor:', JSON.stringify(result, null, 2));
-                console.log('📋 Detalles del registro:', {
-                    user: result?.user?.getUsername(),
-                    userSub: result?.userSub,
-                    codeDeliveryDetails: result?.codeDeliveryDetails,
-                });
-                resolve(result);
-            });
-        });
-    },
-    // CONFIRMAR CÓDIGO
-    confirmSignUp: (username: string, code: string): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            const cognitoUser = new CognitoUser({
-                Username: username,
-                Pool: userPool,
+                body: JSON.stringify({ username, password }),
+                signal: controller.signal,
             });
 
-            cognitoUser.confirmRegistration(code, true, (err, result) => {
-                if (err) {
-                    console.log('❌ ERROR EN CONFIRMACIÓN - Respuesta del servidor:', JSON.stringify(err, null, 2));
-                    console.log('📝 Detalles del error de confirmación:', {
-                        code: (err as any).code,
-                        name: err.name,
-                        message: err.message,
-                    });
-                    reject(err);
-                    return;
-                }
-                console.log('✅ CONFIRMACIÓN EXITOSA - Respuesta del servidor:', JSON.stringify(result, null, 2));
-                console.log('📋 Usuario confirmado exitosamente');
-                resolve(result);
-            });
-        });
-    },
-    // COMPLETAR CAMBIO DE CONTRASEÑA OBLIGATORIO
-    completeNewPasswordChallenge: (cognitoUser: CognitoUser, newPassword: string, userAttributes?: any): Promise<any> => {
-        return new Promise((resolve, reject) => {
-            // Eliminar atributos que no se pueden modificar
-            delete userAttributes.email_verified;
-            delete userAttributes.phone_number_verified;
+            clearTimeout(timeoutId);
+            
+            console.log('📥 [AuthService] Respuesta recibida!');
+            console.log('📥 [AuthService] Status:', response.status);
+            console.log('📥 [AuthService] Status text:', response.statusText);
+            console.log('📥 [AuthService] OK:', response.ok);
 
-            cognitoUser.completeNewPasswordChallenge(newPassword, userAttributes, {
-                onSuccess: async (result) => {
-                    console.log('✅ CONTRASEÑA CAMBIADA EXITOSAMENTE');
-                    const token = result.getIdToken().getJwtToken();
-                    const username = cognitoUser.getUsername();
-                    await Keychain.setGenericPassword(username, token);
-                    resolve(result);
-                },
-                onFailure: (err) => {
-                    console.log('❌ ERROR AL CAMBIAR CONTRASEÑA:', err);
-                    reject(err);
-                },
-            });
-        });
-    },
-    // LOGOUT
-    signOut: async (): Promise<void> => {
-        console.log('🚪 Iniciando proceso de logout...');
-        const cognitoUser = userPool.getCurrentUser();
-        if (cognitoUser) {
-            console.log('👤 Usuario encontrado, cerrando sesión de Cognito...');
-            cognitoUser.signOut();
-        } else {
-            console.log('⚠️ No hay usuario activo en Cognito');
+            if (!response.ok) {
+                const error = await response.text();
+                console.error('❌ [AuthService] Error del servidor:', error);
+                throw new Error(error || 'Error en login');
+            }
+
+            const data = await response.json();
+            console.log('✅ [AuthService] Login exitoso:', data);
+            await AsyncStorage.setItem('authToken', data.token);
+            await Keychain.setGenericPassword(username, data.token);
+            return data;
+        } catch (error: any) {
+            console.error('💥 =====================');
+            console.error('💥 [AuthService] ERROR CAPTURADO');
+            console.error('💥 [AuthService] Tipo de error:', error.name);
+            console.error('💥 [AuthService] Mensaje:', error.message);
+            console.error('💥 [AuthService] Stack:', error.stack);
+            console.error('💥 =====================');
+            
+            if (error.name === 'AbortError') {
+                throw new Error('⏱️ Tiempo de espera agotado. Verifica tu conexión y que el servidor esté corriendo.');
+            }
+            throw error;
         }
-        await AsyncStorage.removeItem('userToken');
-        console.log('✅ Token removido del almacenamiento local');
-        console.log('🎯 Logout completado');
     },
-    // OBTENER TOKEN
-    getToken: async (): Promise<string | null> => {
-        const token = await AsyncStorage.getItem('userToken');
-        console.log('🔍 Verificando token almacenado:', token ? 'Token encontrado' : 'No hay token');
-        return token;
-    },
+    checkAuth: async () => {
+        try {
+            console.log('🔍 [AuthService] Verificando autenticación...');
+            const credentials = await Keychain.getGenericPassword();
+            if (credentials) {
+                console.log('✅ [AuthService] Credenciales encontradas');
+                return true;
+            } else {
+                console.log('❌ [AuthService] No hay credenciales');
+                return false;
+            }
+        } catch (error) {
+            console.error('💥 [AuthService] Error en checkAuth:', error);
+            throw error;
+        }
+    }
+
 };

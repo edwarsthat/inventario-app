@@ -53,7 +53,7 @@ const LoginScreen: React.FC = ({ }) => {
                 pushRoute('Auth/ResetPassword');
                 return;
             }
-            setPasswordError(error.message || 'Error al iniciar sesión');
+            setPasswordError(error.message.error || 'Error al iniciar sesión');
         } finally {
             setLoading(false);
         }
